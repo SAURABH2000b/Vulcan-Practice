@@ -21,9 +21,15 @@
     <ClCompile Include="src\HelloTriangleApplication.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Utility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\HelloTriangleApplication.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Utility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
