@@ -5,7 +5,17 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <vector>
+#include <optional>
+
 #include "Utility.h"
+
+struct QueueFamilyIndices {
+	std::optional<uint32_t> m_graphicsFamily;
+
+	bool m_isComplete() {
+		return m_graphicsFamily.has_value();
+	}
+};
 
 class HelloTriangleApplication {
 public:
@@ -19,6 +29,10 @@ private:
 	bool m_checkValidationLayerSupport();
 	void m_setupDebugMessenger();
 	void m_populateDebugMessengerCreateInfoStruct(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+	void m_pickPhysicalDevice();
+	int m_rateDeviceSuitability(VkPhysicalDevice device);
+	void m_createLogicalDevice();
+	QueueFamilyIndices m_findQueueFamilies(VkPhysicalDevice device);
 
 	std::vector<const char*> m_getRequiredExtensions();
 
@@ -30,6 +44,11 @@ private:
 
 	AppDetails m_appDetails{ "Hello Triangle", "Saurabh Bhurewar", "6th June, 2025", "Rendering triangle using Vulkan!" };
 	GLFWwindow* m_window;
+
 	VkInstance m_instance;
 	VkDebugUtilsMessengerEXT m_debugMessenger;
+	VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
+	VkDevice m_device;
+	VkQueue m_graphicsQueue;
+
 };
