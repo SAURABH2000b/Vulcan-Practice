@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <algorithm>
+#include <filesystem>
 
 #include <cstring>
 #include "HelloTriangleApplication.h"
@@ -627,8 +628,10 @@ void HelloTriangleApplication::m_createGraphicsPipeline()
 	// 9. Pipeline Layout creation
 	// 10. Graphics Pipeline creation
 
-	auto vertexShaderCode = s_readFile("compiled_shaders/hello_triangle_vert.spv");
-	auto fragmentShaderCode = s_readFile("compiled_shaders/hello_triangle_frag.spv");
+	std::filesystem::path currentExecutablePath = std::filesystem::current_path();
+	std::filesystem::path projectRootPath = currentExecutablePath.parent_path().parent_path();
+	auto vertexShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\hello_triangle_vert.spv");
+	auto fragmentShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\hello_triangle_frag.spv");
 
 	VkShaderModule vertexShaderModule = m_createShaderModule(vertexShaderCode);
 	VkShaderModule fragmentShaderModule = m_createShaderModule(fragmentShaderCode);
@@ -644,10 +647,10 @@ void HelloTriangleApplication::m_createGraphicsPipeline()
 
 	// Stage creation for fragment shader:
 	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
-	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertexShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	vertexShaderStageInfo.module = fragmentShaderModule;
-	vertexShaderStageInfo.pName = "main";
+	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragmentShaderStageInfo.module = fragmentShaderModule;
+	fragmentShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
 
@@ -851,17 +854,18 @@ void HelloTriangleApplication::m_cleanup()
 	if (g_enableValidationLayers) {
 		g_destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
 	}
+	
+	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+	vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+	vkDestroySwapchainKHR(m_device,m_swapChain,nullptr);
 
 	vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
 
 	for (auto imageView : m_swapChainImageViews) {
 		vkDestroyImageView(m_device, imageView, nullptr);
 	}
-	
-	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
-	vkDestroyRenderPass(m_device, m_renderPass, nullptr);
-	vkDestroySwapchainKHR(m_device,m_swapChain,nullptr);
+
 	vkDestroyDevice(m_device, nullptr);
 	vkDestroyInstance(m_instance, nullptr);
 
@@ -878,8 +882,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::s_debugCallBack(
 	void* pUserData)
 {
 
-	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		std::cerr << "(" + static_cast<AppDetails*>(pUserData)->m_appName + ") Validation layer: " << pCallbackData->pMessage << std::endl;
+	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+		std::cerr << "WARN" << "(" + static_cast<AppDetails*>(pUserData)->m_appName + ") Validation layer: " << pCallbackData->pMessage << std::endl << std::endl;
+	}
+
+	if (messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+		std::cerr << "ERROR" << "(" + static_cast<AppDetails*>(pUserData)->m_appName + ") Validation layer: " << pCallbackData->pMessage << std::endl << std::endl;
+	}
+		
 
 	return VK_FALSE;
 
