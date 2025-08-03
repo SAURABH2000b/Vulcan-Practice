@@ -54,6 +54,11 @@ private:
 	void m_createGraphicsPipeline();
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 	void m_createFramebuffers();
+	void m_createCommandPool();
+	void m_createCommandBuffer();
+	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
+	void m_drawFrame();
+	void m_createSyncObjects();
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallBack(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -82,4 +87,9 @@ private:
 	VkPipelineLayout m_pipelineLayout;
 	VkPipeline m_graphicsPipeline;
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
+	VkCommandPool m_commandPool;
+	VkCommandBuffer m_commandBuffer;
+	VkSemaphore m_imageAvailableSemaphore;
+	VkSemaphore m_renderFinishedSemaphore;
+	VkFence m_inFlightFence;
 };
