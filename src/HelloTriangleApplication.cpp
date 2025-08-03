@@ -62,6 +62,7 @@ void HelloTriangleApplication::m_initVulkan()
 	m_createImageViews();
 	m_createRenderPass();
 	m_createGraphicsPipeline();
+	m_createFramebuffers();
 
 }
 
@@ -605,7 +606,9 @@ void HelloTriangleApplication::m_createRenderPass()
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.pAttachments = &colorAttachment; // Each element of attachment array will be bound to corresponding image view object
+													// specified during framebuffer creation. A framebuffer object will wrap an array of 
+													// image view objects.
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 
@@ -819,6 +822,45 @@ VkShaderModule HelloTriangleApplication::m_createShaderModule(const std::vector<
 	}
 
 	return shaderModule;
+
+}
+
+void HelloTriangleApplication::m_createFramebuffers()
+{
+
+	m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
+
+	// A framebuffer is a wrapper that wraps all attachments required by the render pass object.
+	// Since we want our application to present image to screen, we need to include a swapchain image
+	// (wrapped under image view) as an attachment. As we have multiple swapchain images, we need to
+	// have a framebuffer wrapper object for each.
+	// For a frame, render pass object can only reference a single framebuffer object. This framebuffer
+	// object will be containing the swapchain image supplied by the swapchain.
+	// Whithin a render pass, there will be multiple subpasses and each subpass will reference one or more
+	// attachments of the framebuffer.
+	// Each subpass will have its own graphics pipeline.
+	
+	for (size_t i = 0; i < m_swapChainImageViews.size(); i++) {
+		VkImageView attachments[] = {
+			m_swapChainImageViews[i]
+		};
+
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = m_renderPass; // The provided render pass object should have same number and type of 
+												   // attachments as this frame buffer object is having
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments; // Each element of view image attachment array here will get bound to the 
+													// corresponding element of attachment description array of the render pass object
+		framebufferInfo.width = m_swapChainExtent.width;
+		framebufferInfo.height = m_swapChainExtent.height;
+		framebufferInfo.layers = 1;
+
+		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_swapChainFramebuffers[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create framebuffer!");
+		}
+	}
+
 }
 
 std::vector<const char*> HelloTriangleApplication::m_getRequiredExtensions()
@@ -855,6 +897,10 @@ void HelloTriangleApplication::m_cleanup()
 		g_destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
 	}
 	
+	for (auto framebuffer : m_swapChainFramebuffers) {
+		vkDestroyFramebuffer(m_device, framebuffer, nullptr);
+	}
+
 	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
 	vkDestroyRenderPass(m_device, m_renderPass, nullptr);
@@ -882,7 +928,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::s_debugCallBack(
 	void* pUserData)
 {
 
-	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
 		std::cerr << "WARN" << "(" + static_cast<AppDetails*>(pUserData)->m_appName + ") Validation layer: " << pCallbackData->pMessage << std::endl << std::endl;
 	}
 
@@ -890,7 +936,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::s_debugCallBack(
 		std::cerr << "ERROR" << "(" + static_cast<AppDetails*>(pUserData)->m_appName + ") Validation layer: " << pCallbackData->pMessage << std::endl << std::endl;
 	}
 		
-
 	return VK_FALSE;
 
 }

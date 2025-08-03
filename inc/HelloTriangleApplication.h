@@ -53,6 +53,7 @@ private:
 	void m_createRenderPass();
 	void m_createGraphicsPipeline();
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
+	void m_createFramebuffers();
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallBack(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -80,4 +81,5 @@ private:
 	VkRenderPass m_renderPass;
 	VkPipelineLayout m_pipelineLayout;
 	VkPipeline m_graphicsPipeline;
+	std::vector<VkFramebuffer> m_swapChainFramebuffers;
 };
