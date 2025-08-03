@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <vector>
 #include <optional>
+#include <fstream>
 
 #include "Utility.h"
 
@@ -49,12 +50,17 @@ private:
 	VkExtent2D m_chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	void m_createSwapChain();
 	void m_createImageViews();
+	void m_createRenderPass();
+	void m_createGraphicsPipeline();
+	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallBack(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData);
+
+	static std::vector<char> s_readFile(const std::string& filename);
 
 	AppDetails m_appDetails{ "Hello Triangle", "Saurabh Bhurewar", "6th June, 2025", "Rendering triangle using Vulkan!" };
 	GLFWwindow* m_window;
@@ -71,4 +77,7 @@ private:
 	VkSwapchainKHR m_swapChain;
 	std::vector<VkImage> m_swapChainImages;
 	std::vector<VkImageView> m_swapChainImageViews;
+	VkRenderPass m_renderPass;
+	VkPipelineLayout m_pipelineLayout;
+	VkPipeline m_graphicsPipeline;
 };
