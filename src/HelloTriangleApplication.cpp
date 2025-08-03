@@ -1083,6 +1083,10 @@ void HelloTriangleApplication::m_mainLoop()
 		m_drawFrame();
 	}
 
+	vkQueueWaitIdle(m_graphicsQueue);
+	vkQueueWaitIdle(m_presentQueue);
+	vkDeviceWaitIdle(m_device);
+
 }
 
 void HelloTriangleApplication::m_cleanup()
