@@ -10,6 +10,8 @@
 
 #include "Utility.h"
 
+const int MAX_FRAMES_IN_FLIGHT = 2; // Recommended value is 2.
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> m_graphicsFamily;
 	std::optional<uint32_t> m_presentFamily;
@@ -20,7 +22,7 @@ struct QueueFamilyIndices {
 };
 
 struct SwapChainSupportDetails {
-	VkSurfaceCapabilitiesKHR m_capabilities;
+	VkSurfaceCapabilitiesKHR m_capabilities{};
 	std::vector<VkSurfaceFormatKHR> m_formats;
 	std::vector<VkPresentModeKHR> m_presentModes;
 };
@@ -55,10 +57,13 @@ private:
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 	void m_createFramebuffers();
 	void m_createCommandPool();
-	void m_createCommandBuffer();
+	void m_createCommandBuffers();
 	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
 	void m_drawFrame();
 	void m_createSyncObjects();
+	void m_recreateSwapChain();
+	void m_swapChainCleanup();
+	void m_renderPassCleanup();
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallBack(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -67,6 +72,7 @@ private:
 		void* pUserData);
 
 	static std::vector<char> s_readFile(const std::string& filename);
+	static void s_frameBufferResizeCallback(GLFWwindow* window, int width, int height);
 
 	AppDetails m_appDetails{ "Hello Triangle", "Saurabh Bhurewar", "6th June, 2025", "Rendering triangle using Vulkan!" };
 	GLFWwindow* m_window;
@@ -88,8 +94,10 @@ private:
 	VkPipeline m_graphicsPipeline;
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
 	VkCommandPool m_commandPool;
-	VkCommandBuffer m_commandBuffer;
-	VkSemaphore m_imageAvailableSemaphore;
-	VkSemaphore m_renderFinishedSemaphore;
-	VkFence m_inFlightFence;
+	std::vector<VkCommandBuffer> m_commandBuffers;
+	std::vector<VkSemaphore> m_imageAvailableSemaphores;
+	std::vector<VkSemaphore> m_renderFinishedSemaphores;
+	std::vector<VkFence> m_inFlightFences;
+	bool m_framebufferResized = false;
+	uint32_t m_current_Frame = 0;
 };
