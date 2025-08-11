@@ -79,6 +79,7 @@
     <ClCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>;$(SolutionDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -89,7 +90,7 @@
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir)externals\include\glfw;$(SolutionDir)externals\include\glm;$(SolutionDir)externals\include\vulkan;$(SolutionDir)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)externals\include\glfw;$(SolutionDir)externals\include\glm;$(SolutionDir)externals\include\vulkan;$(SolutionDir)\inc;$(SolutionDir)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -103,6 +104,7 @@
     <ClCompile>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>;$(SolutionDir)\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -115,7 +117,7 @@
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir)externals\include\glfw;$(SolutionDir)externals\include\glm;$(SolutionDir)externals\include\vulkan;$(SolutionDir)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)externals\include\glfw;$(SolutionDir)externals\include\glm;$(SolutionDir)externals\include\vulkan;$(SolutionDir)\inc;$(SolutionDir)\</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -128,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\geometry\G_Vertex.cpp" />
     <ClCompile Include="src\HelloTriangleApplication.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Utility.cpp" />
@@ -135,8 +138,12 @@
   <ItemGroup>
     <ClInclude Include="inc\HelloTriangleApplication.h" />
     <ClInclude Include="inc\Utility.h" />
+    <ClInclude Include="src\geometry\BasicSceneDescriptor.h" />
+    <ClInclude Include="src\geometry\G_Vertex.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader_src\basic_shading.frag" />
+    <None Include="shader_src\basic_shading.vert" />
     <None Include="shader_src\hello_triangle.frag" />
     <None Include="shader_src\hello_triangle.vert" />
   </ItemGroup>

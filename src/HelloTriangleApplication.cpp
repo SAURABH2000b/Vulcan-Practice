@@ -10,6 +10,8 @@
 
 #include <cstring>
 #include "HelloTriangleApplication.h"
+#include "geometry/G_Vertex.h"
+#include "geometry/BasicSceneDescriptor.h";
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -62,9 +64,11 @@ void HelloTriangleApplication::m_initVulkan()
 	m_createSwapChain();
 	m_createImageViews();
 	m_createRenderPass();
-	m_createGraphicsPipeline();
+	//m_createGraphicsPipelineWithNoVertexInput();
+	m_createGraphicsPipelineWithVertexInput();
 	m_createFramebuffers();
 	m_createCommandPool();
+	m_createVertexBuffer();
 	m_createCommandBuffers();
 	m_createSyncObjects();
 
@@ -598,7 +602,7 @@ void HelloTriangleApplication::m_createRenderPass()
 	// The driver will create an array of attachment descriptions.
 	// Each subpass will hold the reference(s) to the attachment(s)
 	// using its/their index/indices in this array.
-	// The index of the attachment in this array is directly referenced from the fragment  shader
+	// The index of the attachment in this array is directly referenced from the fragment shader
 	// using the 'layout(location = 0) out vec4 outColor;' directive
 
 	// Other kinds of attachments that a subpass can reference are:
@@ -633,7 +637,7 @@ void HelloTriangleApplication::m_createRenderPass()
 	}
 }
 
-void HelloTriangleApplication::m_createGraphicsPipeline()
+void HelloTriangleApplication::m_createGraphicsPipelineWithNoVertexInput()
 {
 	// Index:
 	// 1. Programmable stage creation
@@ -826,6 +830,201 @@ void HelloTriangleApplication::m_createGraphicsPipeline()
 
 }
 
+void HelloTriangleApplication::m_createGraphicsPipelineWithVertexInput()
+{
+	// Index:
+	// 1. Programmable stage creation
+	// 2. Vertex input state creation
+	// 3. Input assembly state creation
+	// 4. Viewport state creation (Dynamic or static)
+	// 5. Rasterizer state creation
+	// 6. Multisampling state creation
+	// 7. Depth and Stencil state creation
+	// 8. Color blending state creation
+	// 9. Pipeline Layout creation
+	// 10. Graphics Pipeline creation
+
+	std::filesystem::path currentExecutablePath = std::filesystem::current_path();
+	std::filesystem::path projectRootPath = currentExecutablePath.parent_path().parent_path();
+	auto vertexShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_shading_vert.spv");
+	auto fragmentShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_shading_frag.spv");
+
+	VkShaderModule vertexShaderModule = m_createShaderModule(vertexShaderCode);
+	VkShaderModule fragmentShaderModule = m_createShaderModule(fragmentShaderCode);
+
+	// Stage creation for vertex shader:
+	VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
+	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertexShaderStageInfo.module = vertexShaderModule;
+	vertexShaderStageInfo.pName = "main"; // Entry point of the shader module, mostly 'main'
+	// Its possible to combine multiple shaders (of same type/stage) into a single shader module
+	// and differentiate them using different entry point names
+
+	// Stage creation for fragment shader:
+	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
+	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragmentShaderStageInfo.module = fragmentShaderModule;
+	fragmentShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
+
+	// Vertex input state creation:
+	auto bindingDescription = Vertex::sGetBindingDescription();
+	auto attributeDescriptions = Vertex::mGetAttributeDescriptions();
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	// Input assembly state creation:
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	// Viewport definition (for static viewport state):
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)m_swapChainExtent.width;
+	viewport.height = (float)m_swapChainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	// Scissor rectangle definition (for static scissor state):
+	VkRect2D scissor{};
+	scissor.offset = { 0,0 };
+	scissor.extent = m_swapChainExtent;
+
+	// Dynamic state declaration for viewport and scissor (for dynamic viewport and scissor states):
+	std::vector<VkDynamicState> dynamicStates = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+	};
+	// We can make other useful states like polygon mode (filled or wireframe) etc. as dynamic too, but
+	// that requires certain device extensions.
+	// We are making viewport and scissor dynamic, because these properties can change when window or
+	// surface is resized.
+
+
+	VkPipelineDynamicStateCreateInfo dynamicState{};
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+
+	VkPipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1; // for multiple viewports we need to have a gpu feature enabled in logical device creation section.
+	viewportState.scissorCount = 1;
+	//viewportState.pViewports = &viewport;
+	//viewportState.pScissors = &scissor;
+	// As we are opting for dynamic viewport, viewportState.pScissors and viewportState.pViewports can be specified at the time of drawing.
+
+	// Rasterizer state creation:
+	VkPipelineRasterizationStateCreateInfo rasterizer{};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE; // When true, it clamps the fragments beyond near and far planes
+	// to near and far planes instead of discarding them. This is useful
+	// for shadow mapping. To turn it on we need have a 
+	// gpu feature enabled in logical device creation section.
+	rasterizer.rasterizerDiscardEnable = VK_FALSE; // Used to disable output to frame buffer. Geometry from
+	// vertex processing never passes through the rasterizer stage.
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // Using any other mode other than VK_POLYGON_MODE_FILL requires
+	// a gpu feature to be enabled in logical device creation section.
+	rasterizer.lineWidth = 1.0f; // Thickness of lines in terms of number of fragments. Thickness other than 1.0f
+	// requires a gpu feature 'wideLines' to be enabled in logical device creation section.
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE; // Useful for shadow mapping.
+	rasterizer.depthBiasConstantFactor = 0.0f;
+	rasterizer.depthBiasClamp = 0.0f;
+	rasterizer.depthBiasSlopeFactor = 0.0f;
+
+	// Multisampling state creation:
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f;
+	multisampling.pSampleMask = nullptr;
+	multisampling.alphaToCoverageEnable = VK_FALSE;
+	multisampling.alphaToOneEnable = VK_FALSE;
+
+	// Depth and Stencil state creation:
+
+	// Color blending state creation:
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{}; // Create one for each framebuffer.
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+		VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo colorBlending{};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
+
+	// Pipeline layout creation:
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.pSetLayouts = nullptr;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	if (vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create pipeline layout!");
+	}
+
+	// Graphics Pipeline creation:
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = nullptr;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = &dynamicState;
+	pipelineInfo.layout = m_pipelineLayout;
+	pipelineInfo.renderPass = m_renderPass;
+	pipelineInfo.subpass = 0; // A graphics pipeline object can utilize only one subpass of the render pass.
+	// In case we need to utilize multiple subpasses of a render pass then we need
+	// to create new graphics pipeline objects utilizing each of them.
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Used when we are deriving the current graphics pipeline object
+	// from another graphics pipeline object.
+	// For this we need to specify VK_PIPELINE_CREATE_DERIVATIVE_BIT flag in flags field.
+	pipelineInfo.basePipelineIndex = -1;
+
+	if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create graphics pipeline!");
+	}// We can create multiple graphics pipelines using vkCreateGraphicsPipelines() function in a single call, 
+	 // by passing their count and pointer to an array of VkGraphicsPipelineCreateInfo struct objects.
+
+	// Cleanup:
+	vkDestroyShaderModule(m_device, vertexShaderModule, nullptr);
+	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
+}
+
 VkShaderModule HelloTriangleApplication::m_createShaderModule(const std::vector<char>& code)
 {
 
@@ -896,6 +1095,78 @@ void HelloTriangleApplication::m_createCommandPool()
 	}
 }
 
+void HelloTriangleApplication::m_createVertexBuffer()
+{
+	// Index:
+	// 1. Create vertex buffer
+	// 2. Get memory requirements of the buffer
+	// 3. Allocate memory for the buffer on physical device's VRAM
+	// 4. Bind the allocated memory to the vertex buffer
+	// 5. Map the allocated memory from VRAM to RAM
+	// 6. Fill the mapped memory in RAM with vertex data
+	// 7. Unmap the mapped memory
+
+	// Create vertex buffer:
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(vertices[0])*vertices.size();
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(m_device, &bufferInfo, nullptr, &m_vertexBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create vertex buffers!");
+	}
+
+	// Get memory requirements of the buffer:
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(m_device, m_vertexBuffer, &memoryRequirements);
+
+	// Allocate memory for the buffer on physical device's VRAM:
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memoryRequirements.size;
+	allocInfo.memoryTypeIndex = m_findMemoryType(memoryRequirements.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(m_device, &allocInfo, nullptr, &m_vertexBufferMemory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate vertex buffer memory!");
+	}
+
+	// Bind the allocated memory to the vertex buffer:
+	vkBindBufferMemory(m_device, m_vertexBuffer, m_vertexBufferMemory, 0);
+
+	// Map the allocated memory from VRAM to RAM:
+	void* data;
+	vkMapMemory(m_device, m_vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+
+	// Fill the mapped memory in RAM with vertex data:
+	memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+
+	// Unmap the mapped memory:
+	vkUnmapMemory(m_device, m_vertexBufferMemory);
+	// The transfer of the data from the mapped memory on CPU to the allocated memory on GPU will
+	// happen in background, and guaranteed to be completed as of the next call to vkQueueSubmit.
+
+}
+
+uint32_t HelloTriangleApplication::m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if (typeFilter & (1 << i) && 
+			(memProperties.memoryTypes[i].propertyFlags&properties)==properties) {
+			return i;
+		}
+	}
+
+	throw std::runtime_error("failed to find suitable memory type!");
+
+}
+
 void HelloTriangleApplication::m_createCommandBuffers()
 {
 
@@ -922,7 +1193,7 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 	// Index:
 	// 1. Begin command buffer recording
 	// 2. Start a render pass
-	// 3. Basic drawing commands
+	// 3. Drawing commands
 	// 4. End render pass
 
 	// Begin command buffer recording:
@@ -949,8 +1220,12 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	// Basic drawing commands:
+	// Drawing commands:
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+
+	VkBuffer vertexBuffers[] = { m_vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -966,7 +1241,7 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 	scissor.extent = m_swapChainExtent;
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor); // Dynamic scissor state of graphics pipeline
 
-	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 	// End render pass:
 	vkCmdEndRenderPass(commandBuffer);
@@ -1179,6 +1454,9 @@ void HelloTriangleApplication::m_cleanup()
 		vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
 		vkDestroyFence(m_device, m_inFlightFences[i], nullptr);
 	}
+
+	vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
+	vkFreeMemory(m_device, m_vertexBufferMemory, nullptr);
 
 	vkDestroyCommandPool(m_device, m_commandPool, nullptr);
 

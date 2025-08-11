@@ -53,10 +53,13 @@ private:
 	void m_createSwapChain();
 	void m_createImageViews();
 	void m_createRenderPass();
-	void m_createGraphicsPipeline();
+	void m_createGraphicsPipelineWithNoVertexInput();
+	void m_createGraphicsPipelineWithVertexInput();
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 	void m_createFramebuffers();
 	void m_createCommandPool();
+	void m_createVertexBuffer();
+	uint32_t m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void m_createCommandBuffers();
 	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
 	void m_drawFrame();
@@ -94,6 +97,8 @@ private:
 	VkPipeline m_graphicsPipeline;
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
 	VkCommandPool m_commandPool;
+	VkBuffer m_vertexBuffer;
+	VkDeviceMemory m_vertexBufferMemory;
 	std::vector<VkCommandBuffer> m_commandBuffers;
 	std::vector<VkSemaphore> m_imageAvailableSemaphores;
 	std::vector<VkSemaphore> m_renderFinishedSemaphores;
