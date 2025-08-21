@@ -8,6 +8,7 @@ VkVertexInputBindingDescription Vertex::sGetBindingDescription()
     bindingDescription.binding = 0; // Specify the index of this current binding in the array of bindings.
     bindingDescription.stride = sizeof(Vertex);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
     return bindingDescription;
 
 }

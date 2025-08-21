@@ -62,6 +62,7 @@ private:
 	void m_createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkSharingMode sharingMode, VkMemoryPropertyFlags properties,
 				VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	void m_createVertexBuffer();
+	void m_createIndexBuffer();
 	uint32_t m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void m_createCommandBuffers();
 	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
@@ -105,6 +106,8 @@ private:
 	VkCommandPool m_commandPoolForTransferQueue;
 	VkBuffer m_vertexBuffer;
 	VkDeviceMemory m_vertexBufferMemory;
+	VkBuffer m_indexBuffer;
+	VkDeviceMemory m_indexBufferMemory;
 	std::vector<VkCommandBuffer> m_commandBuffers;
 	std::vector<VkSemaphore> m_imageAvailableSemaphores;
 	std::vector<VkSemaphore> m_renderFinishedSemaphores;

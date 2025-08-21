@@ -11,7 +11,7 @@
 #include <cstring>
 #include "HelloTriangleApplication.h"
 #include "geometry/G_Vertex.h"
-#include "geometry/BasicSceneDescriptor.h";
+#include "geometry/BasicSceneDescriptor.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -69,6 +69,7 @@ void HelloTriangleApplication::m_initVulkan()
 	m_createFramebuffers();
 	m_createCommandPool();
 	m_createVertexBuffer();
+	m_createIndexBuffer();
 	m_createCommandBuffers();
 	m_createSyncObjects();
 
@@ -1239,6 +1240,61 @@ void HelloTriangleApplication::m_createVertexBuffer()
 
 }
 
+void HelloTriangleApplication::m_createIndexBuffer()
+{
+
+	// Index buffer creation is identical to vertex buffer creation.
+
+	// Index:
+	// 1. Create a staging buffer
+	// 2. Map the allocated memory from VRAM to RAM
+	// 3. Fill the mapped memory in RAM with index data
+	// 4. Unmap the mapped memory
+	// 5. Create an index buffer
+	// 6. Copy data from staging buffer to index buffer
+	// 7. Destroy the staging buffer
+	
+	QueueFamilyIndices queueFamilyIndices = m_findQueueFamilies(m_physicalDevice);
+	VkSharingMode bufferSharingMode;
+	if (queueFamilyIndices.m_graphicsFamily != queueFamilyIndices.m_transferFamily) {
+		bufferSharingMode = VK_SHARING_MODE_CONCURRENT;
+	}
+	else {
+		bufferSharingMode = VK_SHARING_MODE_EXCLUSIVE;										
+	}
+	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+	// Create a staging buffer:
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	m_createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, bufferSharingMode,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer, stagingBufferMemory);
+
+	// Map the allocated memory from VRAM's shared memory to RAM:
+	void* data;
+	vkMapMemory(m_device, stagingBufferMemory, 0, bufferSize, 0, &data);
+
+	// Fill the mapped memory in RAM with index data:
+	memcpy(data, indices.data(), (size_t)bufferSize);
+
+	// Unmap the mapped memory:
+	vkUnmapMemory(m_device, stagingBufferMemory);
+
+	// Create an index buffer:
+	m_createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		bufferSharingMode, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		m_indexBuffer, m_indexBufferMemory);
+
+	// Copy data from staging buffer to index buffer:
+	m_copyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
+
+	// Destroy the staging buffer:
+	vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+	vkFreeMemory(m_device, stagingBufferMemory, nullptr);
+
+}
+
 uint32_t HelloTriangleApplication::m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
 
@@ -1316,6 +1372,8 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
+	vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -1330,7 +1388,8 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 	scissor.extent = m_swapChainExtent;
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor); // Dynamic scissor state of graphics pipeline
 
-	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+	//vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); // For non index based drawing.
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0); // For index based drawing.
 
 	// End render pass:
 	vkCmdEndRenderPass(commandBuffer);
@@ -1589,6 +1648,9 @@ void HelloTriangleApplication::m_cleanup()
 		vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
 		vkDestroyFence(m_device, m_inFlightFences[i], nullptr);
 	}
+
+	vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
+	vkFreeMemory(m_device, m_indexBufferMemory, nullptr);
 
 	vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
 	vkFreeMemory(m_device, m_vertexBufferMemory, nullptr);
