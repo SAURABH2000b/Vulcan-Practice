@@ -15,9 +15,10 @@ const int MAX_FRAMES_IN_FLIGHT = 2; // Recommended value is 2.
 struct QueueFamilyIndices {
 	std::optional<uint32_t> m_graphicsFamily;
 	std::optional<uint32_t> m_presentFamily;
+	std::optional<uint32_t> m_transferFamily;
 
 	bool m_isComplete() {
-		return m_graphicsFamily.has_value() && m_presentFamily.has_value();
+		return m_graphicsFamily.has_value() && m_presentFamily.has_value() && m_transferFamily.has_value();
 	}
 };
 
@@ -58,10 +59,13 @@ private:
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 	void m_createFramebuffers();
 	void m_createCommandPool();
+	void m_createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkSharingMode sharingMode, VkMemoryPropertyFlags properties,
+				VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	void m_createVertexBuffer();
 	uint32_t m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void m_createCommandBuffers();
 	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
+	void m_copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void m_drawFrame();
 	void m_createSyncObjects();
 	void m_recreateSwapChain();
@@ -87,6 +91,7 @@ private:
 	VkDevice m_device;
 	VkQueue m_graphicsQueue;
 	VkQueue m_presentQueue;
+	VkQueue m_transferQueue;
 	VkFormat m_swapChainImageFormat;
 	VkExtent2D m_swapChainExtent;
 	VkSwapchainKHR m_swapChain;
@@ -97,6 +102,7 @@ private:
 	VkPipeline m_graphicsPipeline;
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
 	VkCommandPool m_commandPool;
+	VkCommandPool m_commandPoolForTransferQueue;
 	VkBuffer m_vertexBuffer;
 	VkDeviceMemory m_vertexBufferMemory;
 	std::vector<VkCommandBuffer> m_commandBuffers;
