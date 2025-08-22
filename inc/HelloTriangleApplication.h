@@ -1,5 +1,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include<glfw3.h>
+#define GLM_FORCE_RADIANS
+//#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -7,6 +11,7 @@
 #include <vector>
 #include <optional>
 #include <fstream>
+#include <chrono>
 
 #include "Utility.h"
 
@@ -56,6 +61,8 @@ private:
 	void m_createRenderPass();
 	void m_createGraphicsPipelineWithNoVertexInput();
 	void m_createGraphicsPipelineWithVertexInput();
+	void m_createDescriptorSetLayout();
+	void m_createGraphicsPipelineWith3DSetup();
 	VkShaderModule m_createShaderModule(const std::vector<char>& code);
 	void m_createFramebuffers();
 	void m_createCommandPool();
@@ -63,10 +70,14 @@ private:
 				VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	void m_createVertexBuffer();
 	void m_createIndexBuffer();
+	void m_createUniformBuffers();
+	void m_createDescriptorPool();
+	void m_createDescriptorSets();
 	uint32_t m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void m_createCommandBuffers();
 	void m_recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainImageIndex);
 	void m_copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void m_updateUniformBuffer(uint32_t currentFrame);
 	void m_drawFrame();
 	void m_createSyncObjects();
 	void m_recreateSwapChain();
@@ -99,6 +110,7 @@ private:
 	std::vector<VkImage> m_swapChainImages;
 	std::vector<VkImageView> m_swapChainImageViews;
 	VkRenderPass m_renderPass;
+	VkDescriptorSetLayout m_descriptorSetLayout;
 	VkPipelineLayout m_pipelineLayout;
 	VkPipeline m_graphicsPipeline;
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
@@ -108,6 +120,11 @@ private:
 	VkDeviceMemory m_vertexBufferMemory;
 	VkBuffer m_indexBuffer;
 	VkDeviceMemory m_indexBufferMemory;
+	std::vector<VkBuffer> m_uniformBuffers;
+	std::vector<VkDeviceMemory> m_uniformBufferMemories;
+	std::vector<void*> m_uniformBufferMaps;
+	VkDescriptorPool m_descriptorPool;
+	std::vector<VkDescriptorSet> m_descriptorSets;
 	std::vector<VkCommandBuffer> m_commandBuffers;
 	std::vector<VkSemaphore> m_imageAvailableSemaphores;
 	std::vector<VkSemaphore> m_renderFinishedSemaphores;

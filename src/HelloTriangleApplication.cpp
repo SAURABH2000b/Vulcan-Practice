@@ -11,6 +11,7 @@
 #include <cstring>
 #include "HelloTriangleApplication.h"
 #include "geometry/G_Vertex.h"
+#include "transformation/Transformation.h"
 #include "geometry/BasicSceneDescriptor.h"
 
 const uint32_t WIDTH = 800;
@@ -64,12 +65,18 @@ void HelloTriangleApplication::m_initVulkan()
 	m_createSwapChain();
 	m_createImageViews();
 	m_createRenderPass();
+	// Following commented pipelines are just for reference. In order to use them, we need to modify other sections of code too.
 	//m_createGraphicsPipelineWithNoVertexInput();
-	m_createGraphicsPipelineWithVertexInput();
+	//m_createGraphicsPipelineWithVertexInput();
+	m_createDescriptorSetLayout();
+	m_createGraphicsPipelineWith3DSetup();
 	m_createFramebuffers();
 	m_createCommandPool();
 	m_createVertexBuffer();
 	m_createIndexBuffer();
+	m_createUniformBuffers();
+	m_createDescriptorPool();
+	m_createDescriptorSets();
 	m_createCommandBuffers();
 	m_createSyncObjects();
 
@@ -858,8 +865,8 @@ void HelloTriangleApplication::m_createGraphicsPipelineWithVertexInput()
 
 	std::filesystem::path currentExecutablePath = std::filesystem::current_path();
 	std::filesystem::path projectRootPath = currentExecutablePath.parent_path().parent_path();
-	auto vertexShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_shading_vert.spv");
-	auto fragmentShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_shading_frag.spv");
+	auto vertexShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_2D_shading_vert.spv");
+	auto fragmentShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_2D_shading_frag.spv");
 
 	VkShaderModule vertexShaderModule = m_createShaderModule(vertexShaderCode);
 	VkShaderModule fragmentShaderModule = m_createShaderModule(fragmentShaderCode);
@@ -1035,6 +1042,231 @@ void HelloTriangleApplication::m_createGraphicsPipelineWithVertexInput()
 	// Cleanup:
 	vkDestroyShaderModule(m_device, vertexShaderModule, nullptr);
 	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
+
+}
+
+void HelloTriangleApplication::m_createDescriptorSetLayout()
+{
+	// Index:
+	// 1. Create descriptor binding(s)
+	// 2. Wrap (all) descriptor binding(s) into descriptor set layout
+
+	// Create descriptor binding(s):
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	uboLayoutBinding.binding = 0; // This refers to the binding decorative of the uniform descriptor struct in vertex shaader, 'layout(binding = 0) uniform UniformBufferObject { ...'
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1; // We can have multiple descriptors, if the shader expects an array  of descriptors.
+										  // For example, in skeletal animation, we need transform matrix for each bone, in that case we can have an array of bone transform descriptors.
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // As our descriptor is present in vertex buffer, we are using this flag specifically.
+	uboLayoutBinding.pImmutableSamplers = nullptr; // Relevant for image sampling related descriptors.
+
+	// Wrap (all) descriptor binding(s) into descriptor set layout:
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(m_device, &layoutInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create descriptor set layout!");
+	}
+
+}
+
+void HelloTriangleApplication::m_createGraphicsPipelineWith3DSetup()
+{
+
+	// Index:
+	// 1. Programmable stage creation
+	// 2. Vertex input state creation
+	// 3. Input assembly state creation
+	// 4. Viewport state creation (Dynamic or static)
+	// 5. Rasterizer state creation
+	// 6. Multisampling state creation
+	// 7. Depth and Stencil state creation
+	// 8. Color blending state creation
+	// 9. Pipeline Layout creation
+	// 10. Graphics Pipeline creation
+
+	std::filesystem::path currentExecutablePath = std::filesystem::current_path();
+	std::filesystem::path projectRootPath = currentExecutablePath.parent_path().parent_path();
+	auto vertexShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_3D_shading_vert.spv");
+	auto fragmentShaderCode = s_readFile(projectRootPath.string() + "\\compiled_shaders\\basic_3D_shading_frag.spv");
+
+	VkShaderModule vertexShaderModule = m_createShaderModule(vertexShaderCode);
+	VkShaderModule fragmentShaderModule = m_createShaderModule(fragmentShaderCode);
+
+	// Stage creation for vertex shader:
+	VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
+	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertexShaderStageInfo.module = vertexShaderModule;
+	vertexShaderStageInfo.pName = "main"; // Entry point of the shader module, mostly 'main'
+	// Its possible to combine multiple shaders (of same type/stage) into a single shader module
+	// and differentiate them using different entry point names
+
+	// Stage creation for fragment shader:
+	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
+	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragmentShaderStageInfo.module = fragmentShaderModule;
+	fragmentShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
+
+	// Vertex input state creation:
+	auto bindingDescription = Vertex::sGetBindingDescription();
+	auto attributeDescriptions = Vertex::mGetAttributeDescriptions();
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	// Input assembly state creation:
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	// Viewport definition (for static viewport state):
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)m_swapChainExtent.width;
+	viewport.height = (float)m_swapChainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	// Scissor rectangle definition (for static scissor state):
+	VkRect2D scissor{};
+	scissor.offset = { 0,0 };
+	scissor.extent = m_swapChainExtent;
+
+	// Dynamic state declaration for viewport and scissor (for dynamic viewport and scissor states):
+	std::vector<VkDynamicState> dynamicStates = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+	};
+	// We can make other useful states like polygon mode (filled or wireframe) etc. as dynamic too, but
+	// that requires certain device extensions.
+	// We are making viewport and scissor dynamic, because these properties can change when window or
+	// surface is resized.
+
+
+	VkPipelineDynamicStateCreateInfo dynamicState{};
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+
+	VkPipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1; // for multiple viewports we need to have a gpu feature enabled in logical device creation section.
+	viewportState.scissorCount = 1;
+	//viewportState.pViewports = &viewport;
+	//viewportState.pScissors = &scissor;
+	// As we are opting for dynamic viewport, viewportState.pScissors and viewportState.pViewports can be specified at the time of drawing.
+
+	// Rasterizer state creation:
+	VkPipelineRasterizationStateCreateInfo rasterizer{};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE; // When true, it clamps the fragments beyond near and far planes
+	// to near and far planes instead of discarding them. This is useful
+	// for shadow mapping. To turn it on we need have a 
+	// gpu feature enabled in logical device creation section.
+	rasterizer.rasterizerDiscardEnable = VK_FALSE; // Used to disable output to frame buffer. Geometry from
+	// vertex processing never passes through the rasterizer stage.
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // Using any other mode other than VK_POLYGON_MODE_FILL requires
+	// a gpu feature to be enabled in logical device creation section.
+	rasterizer.lineWidth = 1.0f; // Thickness of lines in terms of number of fragments. Thickness other than 1.0f
+	// requires a gpu feature 'wideLines' to be enabled in logical device creation section.
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE; // Useful for shadow mapping.
+	rasterizer.depthBiasConstantFactor = 0.0f;
+	rasterizer.depthBiasClamp = 0.0f;
+	rasterizer.depthBiasSlopeFactor = 0.0f;
+
+	// Multisampling state creation:
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f;
+	multisampling.pSampleMask = nullptr;
+	multisampling.alphaToCoverageEnable = VK_FALSE;
+	multisampling.alphaToOneEnable = VK_FALSE;
+
+	// Depth and Stencil state creation:
+
+	// Color blending state creation:
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{}; // Create one for each framebuffer.
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+		VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo colorBlending{};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
+
+	// Pipeline layout creation:
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	if (vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create pipeline layout!");
+	}
+
+	// Graphics Pipeline creation:
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = nullptr;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = &dynamicState;
+	pipelineInfo.layout = m_pipelineLayout;
+	pipelineInfo.renderPass = m_renderPass;
+	pipelineInfo.subpass = 0; // A graphics pipeline object can utilize only one subpass of the render pass.
+	// In case we need to utilize multiple subpasses of a render pass then we need
+	// to create new graphics pipeline objects utilizing each of them.
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Used when we are deriving the current graphics pipeline object
+	// from another graphics pipeline object.
+	// For this we need to specify VK_PIPELINE_CREATE_DERIVATIVE_BIT flag in flags field.
+	pipelineInfo.basePipelineIndex = -1;
+
+	if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create graphics pipeline!");
+	}// We can create multiple graphics pipelines using vkCreateGraphicsPipelines() function in a single call, 
+	 // by passing their count and pointer to an array of VkGraphicsPipelineCreateInfo struct objects.
+
+	// Cleanup:
+	vkDestroyShaderModule(m_device, vertexShaderModule, nullptr);
+	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
+
 }
 
 VkShaderModule HelloTriangleApplication::m_createShaderModule(const std::vector<char>& code)
@@ -1295,6 +1527,97 @@ void HelloTriangleApplication::m_createIndexBuffer()
 
 }
 
+void HelloTriangleApplication::m_createUniformBuffers()
+{
+
+	// NOTE: Unlike vertex buffer, which needs to be created once at the time of setup and updated only
+	// if there is modifications to vertex data, which is relatively a less frequent operation, most of the times,
+	// (unless our application is a 3D modelling software, where geometry changes frequently), the contents of uniform
+	// buffers will change per frame (including in-flight frames). Thus, a standard practice is to keep the vertex buffer
+	// into the GPU's dedicated memory, and keep the uniform buffers into the GPU's shared memory.
+	// Also, we keep a persistant map of this shared memory of GPU to RAM memory of host, which we unmap at the end of the program.
+
+	QueueFamilyIndices queueFamilyIndices = m_findQueueFamilies(m_physicalDevice);
+	VkSharingMode bufferSharingMode;
+	if (queueFamilyIndices.m_graphicsFamily != queueFamilyIndices.m_transferFamily) {
+		bufferSharingMode = VK_SHARING_MODE_CONCURRENT;
+	}
+	else {
+		bufferSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+	m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	m_uniformBufferMemories.resize(MAX_FRAMES_IN_FLIGHT);
+	m_uniformBufferMaps.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		m_createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSharingMode,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			m_uniformBuffers[i], m_uniformBufferMemories[i]);
+
+		vkMapMemory(m_device, m_uniformBufferMemories[i], 0, bufferSize, 0, &m_uniformBufferMaps[i]);
+	}
+
+}
+
+void HelloTriangleApplication::m_createDescriptorPool()
+{
+
+	VkDescriptorPoolSize poolSize{};
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	poolInfo.flags = 0;
+
+	if (vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool!");
+	}
+}
+
+void HelloTriangleApplication::m_createDescriptorSets()
+{
+
+	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = m_descriptorPool;
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	allocInfo.pSetLayouts = layouts.data();
+
+	m_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+	if (vkAllocateDescriptorSets(m_device, &allocInfo, m_descriptorSets.data()) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor sets!");
+	}
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = m_uniformBuffers[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(UniformBufferObject); // We can also use VK_WHOLE_SIZE.
+
+		VkWriteDescriptorSet descriptorWrite{};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = m_descriptorSets[i];
+		descriptorWrite.dstBinding = 0; // used by the Layout decorator of the shader: 'layout(binding = 0) uniform UniformBufferObject { ...'
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_device, 1, &descriptorWrite, 0, nullptr);
+	}
+
+}
+
 uint32_t HelloTriangleApplication::m_findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
 
@@ -1388,6 +1711,8 @@ void HelloTriangleApplication::m_recordCommandBuffer(VkCommandBuffer commandBuff
 	scissor.extent = m_swapChainExtent;
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor); // Dynamic scissor state of graphics pipeline
 
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_current_Frame], 0, nullptr);
+
 	//vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); // For non index based drawing.
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0); // For index based drawing.
 
@@ -1446,14 +1771,33 @@ void HelloTriangleApplication::m_copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuff
 
 }
 
+void HelloTriangleApplication::m_updateUniformBuffer(uint32_t currentFrame)
+{
+
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	UniformBufferObject ubo{};
+	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate 90 degrees in 1 second in z-axis, irrespective of frame rate.
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1; // GLM was originally designed for OpenGL, where Y coordinate of clip coordinate is up, whereas, in Vulkan, its down.
+
+	memcpy(m_uniformBufferMaps[currentFrame], &ubo, sizeof(ubo));
+
+}
+
 void HelloTriangleApplication::m_drawFrame()
 {
 	// Index:
 	// 1. Wait for previous frame to complete using fence
 	// 2. Acquiring an image from the swap chain
 	// 3. Recording the command buffer
-	// 4. Submitting the command buffer
-	// 4. Presentation
+	// 4. Updating the uniform buffer
+	// 5. Submitting the command buffer
+	// 6. Presentation
 
 	// Wait for previous frame to complete using fence:
 	vkWaitForFences(m_device, 1, &m_inFlightFences[m_current_Frame], VK_TRUE, UINT64_MAX);
@@ -1477,6 +1821,9 @@ void HelloTriangleApplication::m_drawFrame()
 	// Recording the command buffer:
 	vkResetCommandBuffer(m_commandBuffers[m_current_Frame], 0);
 	m_recordCommandBuffer(m_commandBuffers[m_current_Frame], imageIndex);
+
+	// Updating the uniform buffer:
+	m_updateUniformBuffer(m_current_Frame);
 
 	// Submitting the command buffer:
 	VkSubmitInfo submitInfo{};
@@ -1662,6 +2009,15 @@ void HelloTriangleApplication::m_cleanup()
 
 	m_renderPassCleanup();
 	m_swapChainCleanup();
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vkUnmapMemory(m_device, m_uniformBufferMemories[i]);
+		vkDestroyBuffer(m_device, m_uniformBuffers[i], nullptr);
+		vkFreeMemory(m_device, m_uniformBufferMemories[i], nullptr);
+	}
+	vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+
+	vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, nullptr);
 
 	vkDestroyDevice(m_device, nullptr);
 

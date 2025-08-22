@@ -140,10 +140,13 @@
     <ClInclude Include="inc\Utility.h" />
     <ClInclude Include="src\geometry\BasicSceneDescriptor.h" />
     <ClInclude Include="src\geometry\G_Vertex.h" />
+    <ClInclude Include="src\transformation\Transformation.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader_src\basic_shading.frag" />
-    <None Include="shader_src\basic_shading.vert" />
+    <None Include="shader_src\basic_2D_shading.frag" />
+    <None Include="shader_src\basic_2D_shading.vert" />
+    <None Include="shader_src\basic_3D_shading.frag" />
+    <None Include="shader_src\basic_3D_shading.vert" />
     <None Include="shader_src\hello_triangle.frag" />
     <None Include="shader_src\hello_triangle.vert" />
   </ItemGroup>

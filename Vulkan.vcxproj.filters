@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
@@ -18,6 +14,9 @@
     </Filter>
     <Filter Include="Geometry">
       <UniqueIdentifier>{715ade26-09a2-4087-8118-926565ba9b1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Transformation">
+      <UniqueIdentifier>{5088cde7-fc7c-4f2a-9e34-69418b747873}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -35,17 +34,20 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="inc\HelloTriangleApplication.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\Utility.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\geometry\G_Vertex.h">
       <Filter>Geometry</Filter>
     </ClInclude>
     <ClInclude Include="src\geometry\BasicSceneDescriptor.h">
       <Filter>Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\HelloTriangleApplication.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Utility.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\transformation\Transformation.h">
+      <Filter>Transformation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -55,10 +57,16 @@
     <None Include="shader_src\hello_triangle.vert">
       <Filter>Shader Source Files</Filter>
     </None>
-    <None Include="shader_src\basic_shading.frag">
+    <None Include="shader_src\basic_3D_shading.frag">
       <Filter>Shader Source Files</Filter>
     </None>
-    <None Include="shader_src\basic_shading.vert">
+    <None Include="shader_src\basic_3D_shading.vert">
+      <Filter>Shader Source Files</Filter>
+    </None>
+    <None Include="shader_src\basic_2D_shading.frag">
+      <Filter>Shader Source Files</Filter>
+    </None>
+    <None Include="shader_src\basic_2D_shading.vert">
       <Filter>Shader Source Files</Filter>
     </None>
   </ItemGroup>
