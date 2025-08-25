@@ -4,11 +4,12 @@
 #include<array>
 
 struct Vertex {
-	glm::vec2 m_Pos;
-	glm::vec3 m_Color;
+	glm::vec2 m_pos;
+	glm::vec3 m_color;
+	glm::vec2 m_texCoord;
 
-	static VkVertexInputBindingDescription sGetBindingDescription();
-	static std::array<VkVertexInputAttributeDescription, 2> mGetAttributeDescriptions();
+	static VkVertexInputBindingDescription s_GetBindingDescription();
+	static std::array<VkVertexInputAttributeDescription, 3> s_GetAttributeDescriptions();
 };
 
 class G_Vertex

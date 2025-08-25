@@ -4,6 +4,7 @@
 //#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
+#include <stb_image.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -83,6 +84,19 @@ private:
 	void m_recreateSwapChain();
 	void m_swapChainCleanup();
 	void m_renderPassCleanup();
+	void m_createTextureImage();
+	void m_createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+		VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkImage& image, VkDeviceMemory& imageMemory);
+	void m_transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout,
+		VkImageLayout newLayout);
+	void m_createTextureImageView();
+	void m_copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	VkImageView m_createImageView(VkImage image, VkFormat format);
+	void m_createTextureSampler();
+
+	VkCommandBuffer m_beginSingleTimeCommands(VkCommandPool commandPool);
+	void m_endSingleTimeCommands(VkCommandPool commandPool, VkCommandBuffer commandBuffer);
+	
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallBack(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -116,6 +130,10 @@ private:
 	std::vector<VkFramebuffer> m_swapChainFramebuffers;
 	VkCommandPool m_commandPool;
 	VkCommandPool m_commandPoolForTransferQueue;
+	VkImage m_textureImage;
+	VkDeviceMemory m_textureImageMemory;
+	VkImageView m_textureImageView;
+	VkSampler m_textureSampler;
 	VkBuffer m_vertexBuffer;
 	VkDeviceMemory m_vertexBufferMemory;
 	VkBuffer m_indexBuffer;

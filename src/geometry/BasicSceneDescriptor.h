@@ -3,11 +3,11 @@
 #include "G_Vertex.h"
 
 const std::vector<Vertex> vertices = { // Interleaving vertex attribute array.
- // mPos:            mColor: 
-	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
-	{{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
-	{{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}}
+ // m_pos:           m_color:           m_texCoord:
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+	{{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+	{{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+	{{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
